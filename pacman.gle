@@ -1,71 +1,111 @@
 #!/usr/bin/guile
 !#
-(use-modules (jaft functs) (ncurses curses))
-(include "./mazes.gle")
+(use-modules (jaft functs))
 
-(define stdscr (initscr))
-(noecho!)
-(keypad! stdscr #t)
-(cbreak!)
-(typeahead! -1)
-;; (halfdelay! 2)
-(nodelay! stdscr #t)
+(define (pacman_new current-sprite current-move current-coord)
+  (define curr (vector current-sprite current-move current-coord))
 
-(define (refresh-maze-to-screen grid screen)
-  (erase screen)
-  (for-each (lambda (m)
-              (for-each (lambda (ma)
-                          (addstr screen ma)) m)) grid)
-  (refresh screen))
 
-(define (change-coord grid x y replacement)
-  (define tmp (!! grid y)) 
-  (lst
-    (: grid 0 y)
-    (list (lst
-            (: tmp 0 x)
-            replacement
-            (: tmp (++ x))))
-    (: grid (++ y))))
-
-(define (new-pacman)
-  #("<" KEY_RIGHT))
-
-(define (pacman-next-sprite pacman)
-  (define moves #("^" "V" ">" "<"))
-  (if (== (!! pacman 0) "*")
-      (!! moves (- (!! pacman 1) 258))
-    "*"))
-
-(refresh-maze-to-screen (change-coord maze 1 1 "*") stdscr)
-(flushinp)
-(usleep 500000)
-(if (== (getch stdscr) KEY_RIGHT)
-    (refresh-maze-to-screen (change-coord maze 2 1 "<") stdscr))
-(flushinp)
-(usleep 500000)
-(if (== (getch stdscr) KEY_RIGHT)
-    (refresh-maze-to-screen (change-coord maze 3 1 "*") stdscr))
-(flushinp)
-(usleep 500000)
-(if (== (getch stdscr) KEY_RIGHT)
-    (refresh-maze-to-screen (change-coord maze 4 1 "<") stdscr))
-(flushinp)
-(usleep 500000)
-(if (== (getch stdscr) KEY_RIGHT)
-    (refresh-maze-to-screen (change-coord maze 5 1 "*") stdscr))
-(flushinp)
-(usleep 500000)
-(if (== (getch stdscr) KEY_RIGHT)
-    (refresh-maze-to-screen (change-coord maze 6 1 "<") stdscr))
-(flushinp)
-(usleep 500000)
-(if (== (getch stdscr) KEY_RIGHT)
-    (refresh-maze-to-screen (change-coord maze 7 1 "*") stdscr))
-(flushinp)
-(usleep 500000)
-(if (== (getch stdscr) KEY_RIGHT)
-    (refresh-maze-to-screen (change-coord maze 8 1 "<") stdscr))
-(usleep 500000)
-(endwin)
   
+  (define (get-sprite p-man)
+    (vector-ref p-man 0))
+
+  (define (next-sprite current-sprite next-move)
+    (define moves #("^" "V" ">" "<"))
+
+    (if (== current-sprite "*")
+	(!! moves (- next-move 258))
+      "*"))
+
+
+  
+  (define (get-move p-man)
+    (vector-ref p-man 1))
+
+
+  
+  (define* (get-coord p-man #:optional x-or-y)
+    (define tmp (vector-ref p-man 2))
+    (cond
+     [(== x-or-y #f)  tmp]
+     [(== x-or-y #:x) (vector-ref tmp 0)]
+     [(== x-or-y #:y) (vector-ref tmp 1)]
+     [else (error "Error: incorrect second input.")]))
+
+  (define (next-coord current-coord current-move grid)
+    (define current-coord_x (!! current-coord 0))
+    (define current-coord_y (!! current-coord 1))
+    (define potent-coord (if (> (% current-move 4) 1)
+                             (vector
+                               current-coord_x
+                               ((if (zero? (% current-move 2))
+                                    ++
+                                  --) current-coord_y))
+                           (vector
+                             ((if (zero? (% current-move 2))
+                                  --
+                                ++) current-coord_x)
+                             current-coord_y)))
+    (if (== (coord-char grid potent-coord) "X")
+        current-coord
+      potent-coord))
+
+  (lambda (method . xs)
+    (cond
+     [(== method #:update)     (pacman_new
+                                 (next-sprite (get-sprite curr) (!! xs 0))
+                                 (!! xs 0)  ;; current-move
+                                 (next-coord
+                                   (get-coord curr)
+                                   (get-move curr)
+                                   (!! xs 1)))]  ;; grid
+     [(== method #:get-sprite)             (get-sprite curr)]
+     [(== method #:get-move)                 (get-move curr)]
+     [(== method #:get-coord)  (get-coord curr (if (null? xs)
+                                                   #f
+                                                 (!! xs 0)))])))
+
+
+
+
+(define (pacman_new current-sprite current-move current-coord)
+  (vector current-sprite current-move current-coord))
+(define (pacman_get-sprite p-man)
+  (vector-ref p-man 0))
+(define (pacman_next-sprite p-man)
+  (define moves #("^" "V" ">" "<"))
+  (if (== (pacman_get-sprite p-man) "*")
+      (!! moves (- (pacman_get-move p-man) 258))
+    "*"))
+(define (pacman_get-move p-man)
+  (vector-ref p-man 1))
+(define* (pacman_get-coord p-man #:optional x-or-y)
+  (define tmp (vector-ref p-man 2))
+  (cond
+   [(== x-or-y #f)  tmp]
+   [(== x-or-y #:x) (vector-ref tmp 0)]
+   [(== x-or-y #:y) (vector-ref tmp 1)]
+   [else (error "Error: incorrect second input.")]))
+(define (pacman_next-coord p-man grid)
+  (define current-move (pacman_get-move p-man))
+  (define current-coord_x (pacman_get-coord p-man #:x))
+  (define current-coord_y (pacman_get-coord p-man #:y))
+  (define potent-coord (if (> (% current-move 4) 1)
+                           (vector
+                             current-coord_x
+                             ((if (zero? (% current-move 2))
+                                  ++
+                                --) current-coord_y))
+                         (vector
+                           ((if (zero? (% current-move 2))
+                                --
+                              ++) current-coord_x)
+                           current-coord_y)))
+  (if (== (coord-char grid potent-coord) "X")
+      (pacman_get-coord p-man)
+    potent-coord))
+(define (pacman_update p-man current-move grid)
+  (vector
+    (pacman_next-sprite p-man)
+    current-move
+    (pacman_next-coord p-man grid)))
