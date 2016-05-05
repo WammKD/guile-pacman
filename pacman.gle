@@ -2,8 +2,10 @@
 !#
 (use-modules (jaft functs))
 
-(define (pacman_new current-sprite current-move current-coord)
-  (define curr (vector current-sprite current-move current-coord))
+(define (pacman_new current-sprite next-move current-move current-coord)
+  (define curr (vector current-sprite (if (false? next-move)
+                                          current-move
+                                        next-move) current-coord))
 
 
   
@@ -11,11 +13,12 @@
     (vector-ref p-man 0))
 
   (define (next-sprite current-sprite next-move)
-    (define moves #("^" "V" ">" "<"))
+    (define moves (map normal '("^" "V" ">" "<")))
+    (define ast (normal "*"))
 
-    (if (== current-sprite "*")
+    (if (== current-sprite ast)
 	(!! moves (- next-move 258))
-      "*"))
+      ast))
 
 
   
@@ -32,44 +35,54 @@
      [(== x-or-y #:y) (vector-ref tmp 1)]
      [else (error "Error: incorrect second input.")]))
 
-  (define (next-coord current-coord current-move grid)
+  (define (next-coord current-coord next-move grid)
     (define current-coord_x (!! current-coord 0))
     (define current-coord_y (!! current-coord 1))
-    (define potent-coord (if (> (% current-move 4) 1)
+    (define potent-coord (if (> (% next-move 4) 1)
                              (vector
                                current-coord_x
-                               ((if (zero? (% current-move 2))
+                               ((if (zero? (% next-move 2))
                                     ++
                                   --) current-coord_y))
                            (vector
-                             ((if (zero? (% current-move 2))
+                             ((if (zero? (% next-move 2))
                                   --
                                 ++) current-coord_x)
                              current-coord_y)))
-    (if (== (coord-char grid potent-coord) "X")
+
+    (if (==
+          (grid #:get-coord-char potent-coord)
+          (grid #:get-coord-char #(0 0)))
         current-coord
       potent-coord))
 
+
+  
   (lambda (method . xs)
     (cond
-     [(== method #:update)     (pacman_new
-                                 (next-sprite (get-sprite curr) (!! xs 0))
-                                 (!! xs 0)  ;; current-move
-                                 (next-coord
-                                   (get-coord curr)
-                                   (get-move curr)
-                                   (!! xs 1)))]  ;; grid
-     [(== method #:get-sprite)             (get-sprite curr)]
-     [(== method #:get-move)                 (get-move curr)]
-     [(== method #:get-coord)  (get-coord curr (if (null? xs)
-                                                   #f
-                                                 (!! xs 0)))])))
+     [(== method #:update)          (pacman_new
+				      (next-sprite
+                                        (get-sprite curr)
+                                        (if (false? (!! xs 0))
+                                            (get-move curr)
+                                          (!! xs 0)))
+				      (!! xs 0)  ;; next-move
+                                      (get-move curr)
+				      (next-coord
+				        (get-coord curr)
+					(get-move curr)
+					(!! xs 1)))]  ;; grid
+     [(== method #:get-curr-sprite)             (get-sprite curr)]
+     [(== method #:get-next-move)                 (get-move curr)]
+     [(== method #:get-curr-coord)  (get-coord curr (if (null? xs)
+							#f
+						      (!! xs 0)))])))
 
 
 
 
-(define (pacman_new current-sprite current-move current-coord)
-  (vector current-sprite current-move current-coord))
+(define (pacman_new2 current-sprite next-move current-coord)
+  (vector current-sprite next-move current-coord))
 (define (pacman_get-sprite p-man)
   (vector-ref p-man 0))
 (define (pacman_next-sprite p-man)
@@ -87,25 +100,25 @@
    [(== x-or-y #:y) (vector-ref tmp 1)]
    [else (error "Error: incorrect second input.")]))
 (define (pacman_next-coord p-man grid)
-  (define current-move (pacman_get-move p-man))
+  (define next-move (pacman_get-move p-man))
   (define current-coord_x (pacman_get-coord p-man #:x))
   (define current-coord_y (pacman_get-coord p-man #:y))
-  (define potent-coord (if (> (% current-move 4) 1)
+  (define potent-coord (if (> (% next-move 4) 1)
                            (vector
                              current-coord_x
-                             ((if (zero? (% current-move 2))
+                             ((if (zero? (% next-move 2))
                                   ++
                                 --) current-coord_y))
                          (vector
-                           ((if (zero? (% current-move 2))
+                           ((if (zero? (% next-move 2))
                                 --
                               ++) current-coord_x)
                            current-coord_y)))
   (if (== (coord-char grid potent-coord) "X")
       (pacman_get-coord p-man)
     potent-coord))
-(define (pacman_update p-man current-move grid)
+(define (pacman_update p-man next-move grid)
   (vector
     (pacman_next-sprite p-man)
-    current-move
+    next-move
     (pacman_next-coord p-man grid)))

@@ -1,0 +1,45 @@
+#!/usr/bin/guile
+!#
+(use-modules (jaft functs))
+
+(define (ghost_new current-sprite next-move current-coord eatable-timer)
+  (define curr (vector
+                 current-sprite
+                 next-move
+                 current-coord
+                 #f
+                 eatable-timer))
+
+
+
+  (define (get-sprite ghost)
+    (vector-ref ghost 0))
+
+
+
+  (define (get-move ghost)
+    (vector-ref ghost 1))
+
+
+
+  (define* (get-coord ghost #:optional x-or-y)
+    (define tmp (vector-ref ghost 2))
+    (cond
+     [(== x-or-y #f)  tmp]
+     [(== x-or-y #:x) (vector-ref tmp 0)]
+     [(== x-or-y #:y) (vector-ref tmp 1)]
+     [else (error "Error: incorrect second input.")]))
+
+  (define (next-coord current-coord next-move grid)
+    (print "Finish it."))
+
+
+
+  (lambda (method . xs)
+    (cond
+     [(== method #:update)                     (print "Fuck ya!")]
+     [(== method #:get-curr-sprite)             (get-sprite curr)]
+     [(== method #:get-next-move)                 (get-move curr)]
+     [(== method #:get-curr-coord)  (get-coord curr (if (null? xs)
+							#f
+						      (!! xs 0)))])))
